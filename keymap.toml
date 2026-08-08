@@ -1,0 +1,10 @@
+[mgr]
+prepend_keymap = [
+	{ on = "e", run = "shell \"code %h\" --orphan", desc = "Open hovered in VS Code" },
+	{ on = "b", run = "shell \"open -R %h\" --orphan", desc = "Reveal hovered in Finder" },
+	{ on = "u", run = "copy path --hovered", desc = "Copy hovered path" },
+	{ on = "C", run = "shell \"zip -r archive.zip %s\" --block", desc = "Zip selection" },
+	{ on = "i", run = "plugin save-tabs", desc = "Save tabs" },
+	{ on = "<C-p>", run = "shell -- qlmanage -p %s", desc = "macOS: Preview files with the system Quick Look" },
+	{ on = "!", run = "shell \"$SHELL\" --block", for = "unix", desc = "Open $SHELL here" },
+]

@@ -1,0 +1,9 @@
+[opener]
+vscode = [
+	{ run = "code %s", orphan = true, desc = "Open in VS Code" },
+]
+
+[open]
+prepend_rules = [
+	{ mime = "text/*", use = [ "edit", "vscode", "reveal" ] },
+]
