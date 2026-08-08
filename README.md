@@ -3,6 +3,8 @@
 My [Yazi](https://yazi-rs.github.io/) file manager configuration, kept in git so
 it's easy to set up on a new machine.
 
+Repository: <https://github.com/abulka/yazi-config>
+
 ## Contents
 
 - `keymap.toml` — custom keybindings (macOS-flavoured)
@@ -14,7 +16,7 @@ it's easy to set up on a new machine.
 ## Quick setup
 
 ```sh
-git clone <url> ~/.config/yazi
+git clone https://github.com/abulka/yazi-config ~/.config/yazi
 ```
 
 That's it — Yazi loads config and plugins from `~/.config/yazi`. Then add the
