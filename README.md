@@ -7,7 +7,7 @@ Repository: <https://github.com/abulka/yazi-config>
 
 ## Contents
 
-- `keymap.toml` — custom keybindings (macOS-flavoured)
+- `keymap.toml` — custom keybindings (macOS + Windows, filtered per-OS with `for`)
 - `yazi.toml` — openers / open rules
 - `plugins/save-tabs.yazi/` — "save tabs" plugin (persist open tabs across sessions)
 - `README.md` — this file
@@ -21,6 +21,9 @@ git clone https://github.com/abulka/yazi-config ~/.config/yazi
 
 That's it — Yazi loads config and plugins from `~/.config/yazi`. Then add the
 `y()` function below to your shell rc and make sure `yazi` is installed.
+
+> On Windows, Yazi reads its config from `%AppData%\yazi` instead of
+> `~/.config/yazi`. See [Windows (PowerShell)](#windows-powershell) below.
 
 ## Shell function: `y()`
 
@@ -56,6 +59,56 @@ y() {
 - Uses `mktemp -t ...` and `cat` — no bash/zsh-specific array tricks, so it runs
   on bash 3.2 (macOS), modern bash (Linux), and zsh.
 
+## Windows (PowerShell)
+
+Yazi on Windows looks for its config at `%AppData%\yazi`, **not**
+`~/.config/yazi`. Point it at this repo by setting `YAZI_CONFIG_HOME` in your
+PowerShell profile (`$PROFILE`):
+
+```powershell
+$Env:YAZI_CONFIG_HOME = "$env:USERPROFILE\.config\yazi"
+```
+
+Then add the PowerShell analogue of `y()`, which restores saved tabs and `cd`s
+to the directory you exited in:
+
+```powershell
+function y {
+    $tabsFile = $env:YAZI_TABS_FILE
+    if (-not $tabsFile) { $tabsFile = "$env:USERPROFILE\.config\yazi\tabs.txt" }
+
+    $tabs = @()
+    if (Test-Path -LiteralPath $tabsFile) {
+        $tabs = @(Get-Content -LiteralPath $tabsFile | Where-Object { $_ })
+    }
+    $tabs = @($PWD.Path) + $tabs
+
+    $dedup = @()
+    foreach ($t in $tabs) {
+        if ($dedup -notcontains $t) { $dedup += $t }
+    }
+
+    $tmp = (New-TemporaryFile).FullName
+    yazi.exe @dedup --cwd-file="$tmp"
+    if (Test-Path $tmp) {
+        $cwd = Get-Content -Path $tmp -Encoding UTF8
+        if ($cwd -and $cwd -ne $PWD.Path -and (Test-Path -LiteralPath $cwd)) {
+            Set-Location -LiteralPath $cwd
+        }
+        Remove-Item -Path $tmp -ErrorAction SilentlyContinue
+    }
+}
+```
+
+Notes:
+
+- The `save-tabs` plugin needs no special setup on Windows — it writes to
+  `$YAZI_CONFIG_HOME\tabs.txt` when that variable is set (falling back to
+  `$HOME/.config/yazi/tabs.txt` on Unix). So the plugin and `y()` paths agree.
+- The plugin no longer depends on `HOME`, which is usually unset on Windows.
+- `keymap.toml` already carries Windows bindings (Explorer reveal, `start`,
+  `pwsh`); macOS keys are unaffected thanks to the per-OS `for` filter.
+
 ## Keybindings
 
 Custom (from `keymap.toml`):
@@ -63,12 +116,15 @@ Custom (from `keymap.toml`):
 | Key      | Action                                             |
 | -------- | -------------------------------------------------- |
 | `e`      | Open hovered file in VS Code                       |
-| `b`      | Reveal hovered file in Finder                      |
+| `b`      | Reveal hovered file in Explorer (Windows) / Finder (macOS) |
 | `u`      | Copy hovered file's path                           |
 | `C`      | Zip selection into `archive.zip` (blocking)        |
 | `i`      | Save tabs (see plugin below)                       |
-| `<C-p>`  | Quick Look preview of selection (macOS)            |
-| `!`      | Open `$SHELL` here (blocking)                      |
+| `<C-p>`  | Open hovered with default app (Windows) / Quick Look of selection (macOS) |
+| `!`      | Open `pwsh` (Windows) / `$SHELL` (Unix) here (blocking) |
+
+OS-specific bindings are gated per key with `for = "windows"` / `for = "macos"`
+in `keymap.toml`, so one portable file serves both platforms.
 
 Notable defaults worth knowing:
 
@@ -89,12 +145,14 @@ Notable defaults worth knowing:
 ## Tab persistence plugin (`save-tabs`)
 
 - Press **`i`** inside Yazi to write up to the **8 most recent** open tab
-  directories to `~/.config/yazi/tabs.txt` (see
+  directories to `tabs.txt` (see
   [why 8, not 9](#why-the-plugin-saves-at-most-8-tabs-not-9)).
 - Next time you run `y()`, those tabs are reopened alongside the current
   directory (deduplicated).
-- The plugin path and the `y()` path must agree — both default to
-  `$HOME/.config/yazi/tabs.txt`.
+- The plugin writes to `$YAZI_CONFIG_HOME\tabs.txt` if that variable is set,
+  otherwise `~/.config/yazi/tabs.txt` — the fallback used on Unix. The `y()`
+  path must match the plugin's, so keep `YAZI_CONFIG_HOME` consistent (see the
+  PowerShell section above).
 - `tabs.txt` is machine-specific state and is **not committed** to git.
 - The cap is `max_tabs` in `plugins/save-tabs.yazi/main.lua`.
 

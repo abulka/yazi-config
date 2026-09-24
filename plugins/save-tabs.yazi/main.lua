@@ -12,12 +12,18 @@ end)
 
 return {
 	entry = function()
-		local home = os.getenv("HOME")
-		if not home then
-			ya.notify { title = "Failed to save tabs", content = "HOME not set", level = "warn", timeout = 5 }
-			return
+		local config_home = os.getenv("YAZI_CONFIG_HOME")
+		local file
+		if config_home then
+			file = Url(config_home .. "/tabs.txt")
+		else
+			local home = os.getenv("HOME")
+			if not home then
+				ya.notify { title = "Failed to save tabs", content = "HOME not set", level = "warn", timeout = 5 }
+				return
+			end
+			file = Url(home .. "/.config/yazi/tabs.txt")
 		end
-		local file = Url(home .. "/.config/yazi/tabs.txt")
 		local urls = get_data()
 		local content = #urls > 0 and table.concat(urls, "\n") .. "\n" or ""
 		local ok, err = fs.write(file, content)
