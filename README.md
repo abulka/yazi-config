@@ -88,13 +88,54 @@ Notable defaults worth knowing:
 
 ## Tab persistence plugin (`save-tabs`)
 
-- Press **`i`** inside Yazi to write all open tab directories to
-  `~/.config/yazi/tabs.txt`.
+- Press **`i`** inside Yazi to write up to the **8 most recent** open tab
+  directories to `~/.config/yazi/tabs.txt` (see
+  [why 8, not 9](#why-the-plugin-saves-at-most-8-tabs-not-9)).
 - Next time you run `y()`, those tabs are reopened alongside the current
   directory (deduplicated).
 - The plugin path and the `y()` path must agree — both default to
   `$HOME/.config/yazi/tabs.txt`.
 - `tabs.txt` is machine-specific state and is **not committed** to git.
+- The cap is `max_tabs` in `plugins/save-tabs.yazi/main.lua`.
+
+### Why the plugin saves at most 8 tabs (not 9)
+
+Yazi hard-limits tabs to **9**. Both halves of that limit are the same 9:
+
+- The TUI refuses a 10th tab: *"Too many tabs — You can only open up to 9 tabs
+  at the same time."*
+- The CLI accepts at most 9 positional `[ENTRIES]`; a 10th makes Yazi refuse to
+  start with
+  `error: unexpected value '…' for '[ENTRIES]...' found; no more were expected`.
+
+The plugin caps its save at **8** — one below Yazi's ceiling — because `y()`
+**prepends `$PWD`** to the saved tabs before launching:
+
+```text
+args to yazi  =  $PWD  +  saved tabs   (deduplicated)
+```
+
+The file's line count isn't the only input; the shell's current directory is
+added on top. So even a perfectly legal 9-line `tabs.txt` can overflow:
+
+| Saved tabs | `$PWD` already among them?          | Args | Result           |
+| ---------- | ----------------------------------- | ---- | ---------------- |
+| 8          | either                              | ≤ 9  | starts           |
+| 9          | yes — quit Yazi, run `y` right away | 9    | starts           |
+| 9          | no — you `cd`'d elsewhere first     | 10   | refuses to start |
+
+Capping saves at 8 guarantees the ≤ 9 case regardless of where you are when you
+relaunch. The cost, when you have 9 tabs open and press `i`: only the 8 most
+recent are written, and the oldest is dropped on the next restore.
+
+This is a deliberate trade — `y()` stays simple (no shell-specific array tricks,
+works on bash 3.2), so the guardrail lives in the plugin instead. To keep all 9
+you'd need to raise `max_tabs` to 9 **and** have `y()` trim its argument list to
+9 entries; raising the cap alone lets 9 saved tabs produce 10 arguments, and
+Yazi refuses to start.
+
+The plugin keeps the *most recent* tabs: it writes the last `max_tabs` entries
+of `cx.tabs`, so the oldest are the ones dropped.
 
 ## Tips
 

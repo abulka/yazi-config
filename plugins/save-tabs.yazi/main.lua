@@ -1,6 +1,10 @@
+local max_tabs = 8
+
 local get_data = ya.sync(function()
 	local urls = {}
-	for i = 1, #cx.tabs do
+	local n = #cx.tabs
+	local start = math.max(1, n - max_tabs + 1) -- last `max_tabs` = most recent
+	for i = start, n do
 		urls[#urls + 1] = tostring(cx.tabs[i].current.cwd)
 	end
 	return urls
